@@ -1,0 +1,3 @@
+year,rate1_basic_eur_per_m3,rate1_comfort_eur_per_m3,rate2_basic_eur_per_m3,rate2_comfort_eur_per_m3,rate3_basic_eur_per_m3,rate3_comfort_eur_per_m3,fee1_eur_per_year,fee2_eur_per_year,fee3_eur_per_year,discount1_eur_per_year,discount2_eur_per_year,discount3_eur_per_year
+2019,1.4084,2.8168,1.0606,2.1212,0.9939,1.9878,50,30,20,10,6,4
+2020,1.4139,2.8278,1.0657,2.1314,0.9977,1.9954,50,30,20,10,6,4
