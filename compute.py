@@ -1,4 +1,5 @@
 from datetime import date
+import numpy as np
 import pandas as pd
 
 """
@@ -94,7 +95,15 @@ def compute_basic_threshold(startdate=None, enddate=None, we=3, dom=3):
     return full_year_threshold * prorate_scale(startdate=startdate, enddate=enddate)
 
 
-def compute_fee_drinking(df, startdate=None, enddate=None, we=3, dom=3):
+def compute_fees(
+    df,
+    startdate=None,
+    enddate=None,
+    we=3,
+    dom=3,
+    fee_col="fee1_eur_per_year",
+    discount_col="discount1_eur_per_year",
+):
     """
         You get a discount of discount1_eur_per_year per dom
     """
@@ -104,11 +113,9 @@ def compute_fee_drinking(df, startdate=None, enddate=None, we=3, dom=3):
     else:
         year = startdate.year
     scale = prorate_scale(startdate=startdate, enddate=enddate)
-    sdf = df[df['year'] == year]
-    fee = sdf["fee1_eur_per_year"].values[0] * scale * we
-    discount = max(
-        sdf["discount1_eur_per_year"].values[0] * scale * dom, 0
-    )
+    sdf = df[df["year"] == year]
+    fee = sdf[fee_col].values[0] * scale * we
+    discount = min(sdf[discount_col].values[0] * scale * dom, fee)
     return fee, discount
 
 
@@ -120,8 +127,47 @@ START_DATE = date(2019, 2, 14)
 # match up exactly
 END_DATE = date(2019, 2, 18)
 
-print(compute_basic_threshold(startdate=START_DATE, we=3, dom=3))
-print(compute_basic_threshold(enddate=END_DATE, we=3, dom=5))
 
-print(compute_fee_drinking(df_rates, startdate=START_DATE, we=3, dom=3))
-print(compute_fee_drinking(df_rates, enddate=END_DATE, we=3, dom=5))
+READING = 449
+
+entries = [
+    {"start": START_DATE, "end": date(START_DATE.year, 12, 31), "we": 3, "dom": 3},
+    {"start": date(END_DATE.year, 1, 1), "end": END_DATE, "we": 3, "dom": 5},
+]
+"""
+ algorithm outline:
+   - start date from last bill
+   - end date is last reading submitted for bill
+   - the reading is the difference from end date to start date
+   - work out the number of people per apartment per each year
+        + [(year, we, dom), (year, we, dom)] - should not exceed 2 years, 
+           since each bill covers roughly 365 days just doesn't start on Jan 1 always.
+           But we will implement it to allow any number of years. However, still
+           we consider that WE of DOM changes only on Jan 1st.
+   - split the reading linearly across years
+        For example if it has 321 days in 2019 and 49 days in 2020, then we work
+        out thresholds based on 321/365 for WE1 and DOM1 and then 49/365 for WE2 and DOM2
+        for each year and split it
+
+"""
+
+for entry in entries:
+    scale = prorate_scale(startdate=entry["start"], enddate=entry["end"])
+    threshold = compute_basic_threshold(
+        startdate=entry["start"], enddate=entry["end"], we=entry["we"], dom=entry["dom"]
+    )
+    fees = [
+        compute_fees(
+            df_rates,
+            startdate=entry["start"],
+            enddate=entry["end"],
+            we=entry["we"],
+            dom=entry["dom"],
+            fee_col=f"fee{i}_eur_per_year",
+            discount_col=f"discount{i}_eur_per_year",
+        )
+        for i in range(1, 4)
+    ]
+    fees_with_discount = [f - d for f, d in fees]
+    # print(threshold, np.sum(fees_with_discount))
+    print(threshold, fees)
