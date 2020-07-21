@@ -124,11 +124,13 @@ START_DATE = date(2019, 2, 14)
 
 # strictly this should be 2020 but since this was a leap year and the bill
 # doesn't take this into account we ignore it here so that the numbers
-# match up exactly
+# match up exactly - they use 365 (naive).
 END_DATE = date(2019, 2, 18)
 
-
-READING = 449
+# m3 for the period above
+# it is odd since the bill has both 443 and 449, but 442.94 seems 
+# to match perfectly with amounts in bill
+READING = 442.94
 
 entries = [
     {"start": START_DATE, "end": date(START_DATE.year, 12, 31), "we": 3, "dom": 3},
@@ -169,5 +171,9 @@ for entry in entries:
         for i in range(1, 4)
     ]
     fees_with_discount = [f - d for f, d in fees]
+
+    reading = READING * scale
+    comfort_amount = reading - threshold
+
     # print(threshold, np.sum(fees_with_discount))
-    print(threshold, fees)
+    print(threshold, comfort_amount, fees)
