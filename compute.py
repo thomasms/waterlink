@@ -188,7 +188,7 @@ def compute_total_cost(reading, data, df=df_rates):
         fees_with_discount = [f - d for f, d in fees]
 
         scaled_reading = reading * scale
-        comfort_amount = scaled_reading - threshold
+        comfort_amount = max(scaled_reading - threshold, 0)
 
         basic_costs = [
             threshold * sdf[f"rate{i}_basic_eur_per_m3"].values[0] for i in fees_index
@@ -207,31 +207,4 @@ def compute_total_cost(reading, data, df=df_rates):
         # print(total)
         total_cost += total
     return total_cost
-
-
-# m3 for the period above
-# it is odd since the bill has both 443 and 449, but 442.94 seems
-# to match perfectly with amounts in bill
-print(
-    compute_total_cost(
-        reading=442.936,
-        data=[
-            {"start": date(2019, 2, 14), "end": date(2019, 12, 31), "we": 3, "dom": 3},
-            {"start": date(2020, 1, 1), "end": date(2020, 2, 18), "we": 3, "dom": 5},
-        ],
-        df=df_rates,
-    )
-)
-
-# if they had registered the correct number of people
-print(
-    compute_total_cost(
-        reading=443,
-        data=[
-            {"start": date(2019, 2, 14), "end": date(2019, 12, 31), "we": 3, "dom": 5},
-            {"start": date(2020, 1, 1), "end": date(2020, 2, 18), "we": 3, "dom": 6},
-        ],
-        df=df_rates,
-    )
-)
 
