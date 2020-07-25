@@ -190,8 +190,9 @@ def compute_total_cost(reading, data, df=df_rates):
         scaled_reading = reading * scale
         comfort_amount = max(scaled_reading - threshold, 0)
 
+        basicreading = reading if reading < threshold else threshold
         basic_costs = [
-            threshold * sdf[f"rate{i}_basic_eur_per_m3"].values[0] for i in fees_index
+            basicreading * sdf[f"rate{i}_basic_eur_per_m3"].values[0] for i in fees_index
         ]
         comfort_costs = [
             comfort_amount * sdf[f"rate{i}_comfort_eur_per_m3"].values[0]
