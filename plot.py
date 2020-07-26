@@ -30,8 +30,8 @@ for dom in doms:
         compute_total_cost(
             reading=reading,
             data=[
-                {"start": START_DATE, "end": date(2019, 12, 31), "we": WE, "dom": dom},
-                {"start": date(2020, 1, 1), "end": END_DATE, "we": WE, "dom": dom},
+                {"start": START_DATE, "end": date(START_DATE.year, 12, 31), "we": WE, "dom": dom},
+                {"start": date(END_DATE.year, 1, 1), "end": END_DATE, "we": WE, "dom": dom},
             ],
         )
         for reading in readings

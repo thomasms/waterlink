@@ -37,6 +37,7 @@ in the data.csv file.
 
 df_rates = pd.read_csv("data.csv")
 
+
 # make an effective rate as the sum of all three rates per basic and comfort
 def compute_effective_rate(df):
     basic_cols = [
@@ -120,11 +121,7 @@ def compute_fees(
     """
         You get a discount of discount1_eur_per_year per dom
     """
-    year = None
-    if startdate is None:
-        year = enddate.year
-    else:
-        year = startdate.year
+    year = enddate.year if startdate is None else startdate.year
     scale = prorate_scale(startdate=startdate, enddate=enddate)
     sdf = df[df["year"] == year]
     fee = sdf[fee_col].values[0] * scale * we
@@ -190,7 +187,7 @@ def compute_total_cost(reading, data, df=df_rates):
         scaled_reading = reading * scale
         comfort_amount = max(scaled_reading - threshold, 0)
 
-        basicreading = reading if reading < threshold else threshold
+        basicreading = scaled_reading if scaled_reading < threshold else threshold
         basic_costs = [
             basicreading * sdf[f"rate{i}_basic_eur_per_m3"].values[0] for i in fees_index
         ]
