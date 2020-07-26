@@ -29,10 +29,20 @@ print(
 
 print(
     compute_total_cost(
-        reading=50,
+        reading=160,
         data=[
-            {"start": date(2019, 2, 14), "end": date(2019, 12, 31), "we": 1, "dom": 1},
-            {"start": date(2020, 1, 1), "end": date(2020, 2, 18), "we": 1, "dom": 1},
+            {"start": date(2019, 2, 14), "end": date(2019, 12, 31), "we": 3, "dom": 3},
+            {"start": date(2020, 1, 1), "end": date(2020, 2, 18), "we": 3, "dom": 3},
+        ],
+    )
+)
+
+print(
+    compute_total_cost(
+        reading=180,
+        data=[
+            {"start": date(2019, 2, 14), "end": date(2019, 12, 31), "we": 3, "dom": 3},
+            {"start": date(2020, 1, 1), "end": date(2020, 2, 18), "we": 3, "dom": 3},
         ],
     )
 )

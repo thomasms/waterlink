@@ -35,7 +35,24 @@ in the data.csv file.
 
 """
 
-df_rates = pd.read_csv("data.csv")
+# df_rates = pd.read_csv("data.csv")
+df_rates = pd.DataFrame.from_dict(
+    {
+        "discount1_eur_per_year": {0: 10, 1: 10},
+        "discount2_eur_per_year": {0: 6, 1: 6},
+        "discount3_eur_per_year": {0: 4, 1: 4},
+        "fee1_eur_per_year": {0: 50, 1: 50},
+        "fee2_eur_per_year": {0: 30, 1: 30},
+        "fee3_eur_per_year": {0: 20, 1: 20},
+        "rate1_basic_eur_per_m3": {0: 1.4084, 1: 1.4139},
+        "rate1_comfort_eur_per_m3": {0: 2.8168, 1: 2.8278},
+        "rate2_basic_eur_per_m3": {0: 1.0606, 1: 1.0657},
+        "rate2_comfort_eur_per_m3": {0: 2.1212, 1: 2.1314},
+        "rate3_basic_eur_per_m3": {0: 0.9939, 1: 0.9977},
+        "rate3_comfort_eur_per_m3": {0: 1.9878, 1: 1.9954},
+        "year": {0: 2019, 1: 2020},
+    }
+)
 
 
 # make an effective rate as the sum of all three rates per basic and comfort
@@ -145,7 +162,7 @@ def compute_total_cost(reading, data, df=df_rates):
                 out thresholds based on 321/365 for WE1 and DOM1 and then 49/365 for WE2 and DOM2
                 for each year and split it
 
-        parameters
+        Parameters
         ----------
         # m3 for the period above
         reading = 442.936
@@ -155,7 +172,7 @@ def compute_total_cost(reading, data, df=df_rates):
             {"start": date(END_DATE.year, 1, 1), "end": END_DATE, "we": 3, "dom": 5},
         ]
 
-        returns
+        Returns
         -------
         single value representing total cost in EUR
     """
@@ -170,8 +187,16 @@ def compute_total_cost(reading, data, df=df_rates):
             we=entry["we"],
             dom=entry["dom"],
         )
-        fees = [
-            compute_fees(
+
+        scaled_reading = reading * scale
+        comfort_amount = max(scaled_reading - threshold, 0)
+        basicreading = scaled_reading if scaled_reading < threshold else threshold
+
+        fees_with_discount = []
+        basic_costs = []
+        comfort_costs = []
+        for i in fees_index:
+            f, d = compute_fees(
                 df,
                 startdate=entry["start"],
                 enddate=entry["end"],
@@ -180,21 +205,13 @@ def compute_total_cost(reading, data, df=df_rates):
                 fee_col=f"fee{i}_eur_per_year",
                 discount_col=f"discount{i}_eur_per_year",
             )
-            for i in fees_index
-        ]
-        fees_with_discount = [f - d for f, d in fees]
-
-        scaled_reading = reading * scale
-        comfort_amount = max(scaled_reading - threshold, 0)
-
-        basicreading = scaled_reading if scaled_reading < threshold else threshold
-        basic_costs = [
-            basicreading * sdf[f"rate{i}_basic_eur_per_m3"].values[0] for i in fees_index
-        ]
-        comfort_costs = [
-            comfort_amount * sdf[f"rate{i}_comfort_eur_per_m3"].values[0]
-            for i in fees_index
-        ]
+            fees_with_discount.append(f - d)
+            basic_costs.append(
+                basicreading * sdf[f"rate{i}_basic_eur_per_m3"].values[0]
+            )
+            comfort_costs.append(
+                comfort_amount * sdf[f"rate{i}_comfort_eur_per_m3"].values[0]
+            )
 
         total = np.sum(basic_costs) + np.sum(comfort_costs) + np.sum(fees_with_discount)
 
@@ -205,4 +222,3 @@ def compute_total_cost(reading, data, df=df_rates):
         # print(total)
         total_cost += total
     return total_cost
-
