@@ -22,7 +22,7 @@ class ComputeUnitTest(unittest.TestCase):
                     "dom": 5,
                 },
             ],
-            vat=0.0
+            vat=0.0,
         )
         expected = 2689.12
         self.assertAlmostEqual(result, expected, places=2)
@@ -44,7 +44,7 @@ class ComputeUnitTest(unittest.TestCase):
                     "dom": 5,
                 },
             ],
-            vat=0.06
+            vat=0.06,
         )
         expected = 2850.47
         self.assertAlmostEqual(result, expected, places=2)
@@ -66,7 +66,7 @@ class ComputeUnitTest(unittest.TestCase):
                     "dom": 6,
                 },
             ],
-            vat=0.0
+            vat=0.0,
         )
         expected = 2454.98
         self.assertAlmostEqual(result, expected, places=2)
@@ -88,7 +88,7 @@ class ComputeUnitTest(unittest.TestCase):
                     "dom": 3,
                 },
             ],
-            vat=0.0
+            vat=0.0,
         )
         expected = 805.25
         self.assertAlmostEqual(result, expected, places=2)
@@ -110,7 +110,7 @@ class ComputeUnitTest(unittest.TestCase):
                     "dom": 3,
                 },
             ],
-            vat=0.0
+            vat=0.0,
         )
         expected = 875.50
         self.assertAlmostEqual(result, expected, places=2)

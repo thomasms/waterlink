@@ -86,7 +86,7 @@ def compute_days_between_dates(startdate, enddate, includeenddate=True):
     return days
 
 
-def prorate_scale(startdate=None, enddate=None, naive=True):
+def prorate_scale(startdate=None, enddate=None, naive=False):
     # we have a problem...
     if startdate is None and enddate is None:
         raise RuntimeError("You have a problem.")
@@ -104,9 +104,7 @@ def prorate_scale(startdate=None, enddate=None, naive=True):
     denom = (
         365
         if naive
-        else compute_days_between_dates(
-            date(sd.year, 1, 1), date(sd.year, 12, 31)
-        )
+        else compute_days_between_dates(date(sd.year, 1, 1), date(sd.year, 12, 31))
     )
 
     scale = compute_days_between_dates(sd, ed) / denom
@@ -122,7 +120,7 @@ def compute_basic_threshold(
     basic_limit_person=30,
 ):
     """
-    This must be done per year. 
+    This must be done per year.
     Since the threshold is pro rated if not started on the 1st January.
 
     Need to compute days between and rate based on this.
@@ -136,9 +134,7 @@ def compute_basic_threshold(
     """
 
     full_year_threshold = basic_limit_household * we + basic_limit_person * dom
-    return full_year_threshold * prorate_scale(
-        startdate=startdate, enddate=enddate
-    )
+    return full_year_threshold * prorate_scale(startdate=startdate, enddate=enddate)
 
 
 def compute_fees(
@@ -148,10 +144,10 @@ def compute_fees(
     we=1,
     dom=3,
     fee_col="fee1_eur_per_year",
-    discount_col="discount1_eur_per_year"
+    discount_col="discount1_eur_per_year",
 ):
     """
-        You get a discount of discount1_eur_per_year per dom
+    You get a discount of discount1_eur_per_year per dom
     """
     year = enddate.year if startdate is None else startdate.year
     scale = prorate_scale(startdate=startdate, enddate=enddate)
@@ -162,33 +158,33 @@ def compute_fees(
 
 def compute_total_cost(reading, data, rates=RATES, vat=0.06):
     """
-        algorithm outline:
-        - start date from last bill
-        - end date is last reading submitted for bill
-        - the reading is the difference from end date to start date
-        - work out the number of people per apartment per each year
-                + [(year, we, dom), (year, we, dom)] - should not exceed 2 years, 
-                since each bill covers roughly 365 days just doesn't start on Jan 1 always.
-                But we will implement it to allow any number of years. However, still
-                we consider that WE of DOM changes only on Jan 1st.
-        - split the reading linearly across years
-                For example if it has 321 days in 2019 and 49 days in 2020, then we work
-                out thresholds based on 321/365 for WE1 and DOM1 and then 49/365 for WE2 and DOM2
-                for each year and split it
+    algorithm outline:
+    - start date from last bill
+    - end date is last reading submitted for bill
+    - the reading is the difference from end date to start date
+    - work out the number of people per apartment per each year
+            + [(year, we, dom), (year, we, dom)] - should not exceed 2 years,
+            since each bill covers roughly 365 days just doesn't start on Jan 1 always.
+            But we will implement it to allow any number of years. However, still
+            we consider that WE of DOM changes only on Jan 1st.
+    - split the reading linearly across years
+            For example if it has 321 days in 2019 and 49 days in 2020, then we work
+            out thresholds based on 321/365 for WE1 and DOM1 and then 49/365 for WE2 and DOM2
+            for each year and split it
 
-        Parameters
-        ----------
-        # m3 for the period above
-        reading = 442.936
+    Parameters
+    ----------
+    # m3 for the period above
+    reading = 442.936
 
-        data = [
-            {"start": START_DATE, "end": date(START_DATE.year, 12, 31), "we": 3, "dom": 3},
-            {"start": date(END_DATE.year, 1, 1), "end": END_DATE, "we": 3, "dom": 5},
-        ]
+    data = [
+        {"start": START_DATE, "end": date(START_DATE.year, 12, 31), "we": 3, "dom": 3},
+        {"start": date(END_DATE.year, 1, 1), "end": END_DATE, "we": 3, "dom": 5},
+    ]
 
-        Returns
-        -------
-        single value representing total cost in EUR
+    Returns
+    -------
+    single value representing total cost in EUR
     """
     total_cost = 0
     fees_index = range(1, 4)
@@ -204,9 +200,7 @@ def compute_total_cost(reading, data, rates=RATES, vat=0.06):
 
         scaled_reading = reading * scale
         comfort_amount = max(scaled_reading - threshold, 0)
-        basicreading = (
-            scaled_reading if scaled_reading < threshold else threshold
-        )
+        basicreading = scaled_reading if scaled_reading < threshold else threshold
 
         fees_with_discount = []
         basic_costs = []
@@ -222,14 +216,19 @@ def compute_total_cost(reading, data, rates=RATES, vat=0.06):
                 discount_col=f"discount{i}_eur_per_year",
             )
             fees_with_discount.append(f - d)
-            basic_costs.append(
-                basicreading * yearrates[f"rate{i}_basic_eur_per_m3"]
+            br = yearrates[f"rate{i}_basic_eur_per_m3"]
+            cr = yearrates[f"rate{i}_comfort_eur_per_m3"]
+            basic_costs.append(basicreading * br)
+            comfort_costs.append(comfort_amount * cr)
+            print("---------")
+            print(
+                f'{entry["start"]} - {entry["end"]} ({entry["we"]}/{entry["dom"]}) {i} @ {br}: {basicreading:.2f} = {basicreading * br:.2f} EUR, {f:.2f} fee, {d:.2f} discount'
             )
-            comfort_costs.append(
-                comfort_amount * yearrates[f"rate{i}_comfort_eur_per_m3"]
+            print(
+                f'{entry["start"]} - {entry["end"]} ({entry["we"]}/{entry["dom"]}) {i} @ {cr}: {comfort_amount:.2f} = {comfort_amount * cr:.2f} EUR, {f:.2f} fee, {d:.2f} discount'
             )
 
         total = sum(basic_costs) + sum(comfort_costs) + sum(fees_with_discount)
 
         total_cost += total
-    return total_cost*(1+vat)
+    return total_cost * (1 + vat)
