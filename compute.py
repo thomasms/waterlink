@@ -148,7 +148,7 @@ def compute_fees(
     we=1,
     dom=3,
     fee_col="fee1_eur_per_year",
-    discount_col="discount1_eur_per_year",
+    discount_col="discount1_eur_per_year"
 ):
     """
         You get a discount of discount1_eur_per_year per dom
@@ -160,7 +160,7 @@ def compute_fees(
     return fee, discount
 
 
-def compute_total_cost(reading, data, rates=RATES):
+def compute_total_cost(reading, data, rates=RATES, vat=0.06):
     """
         algorithm outline:
         - start date from last bill
@@ -232,4 +232,4 @@ def compute_total_cost(reading, data, rates=RATES):
         total = sum(basic_costs) + sum(comfort_costs) + sum(fees_with_discount)
 
         total_cost += total
-    return total_cost
+    return total_cost*(1+vat)
