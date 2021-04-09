@@ -177,7 +177,7 @@ def _compute(reading, data, rates=RATES, vat=0.06):
         for entry in data
     ]
     for j, entry in enumerate(data):
-        includeenddate = False if j == 0 and len(data) > 1 else True
+        includeenddate = (False if j == 0 and len(data) > 1 else True)
 
         yearrates = rates[entry["start"].year]
         scale = prorate_scale(
@@ -291,20 +291,33 @@ def print_report(report):
         print("*** Fees")
         for entry in v:
             print(
-                f"{entry['start']} - {entry['end']} for {entry['we']} WE: {entry['days']:13} DAYS {entry['fee_rate']:13} EUR/YEAR {entry['fee']:15.2f} EUR"
+                f"{entry['start']} - {entry['end']} {entry['we']} WE: {entry['days']:14} DAYS {entry['fee_rate']:13} EUR/YEAR {entry['fee']:15.2f} EUR"
             )
         print("\n*** Discounts")
         for entry in v:
             print(
-                f"{entry['start']} - {entry['end']} for {entry['we']} WE: {entry['days']:13} DAYS {-entry['discount_rate']:13} EUR/YEAR {-entry['discount']:15.2f} EUR"
+                f"{entry['start']} - {entry['end']} {entry['dom']} DOM: {entry['days']:13} DAYS {-entry['discount_rate']:13} EUR/YEAR {-entry['discount']:15.2f} EUR"
             )
         print("\n*** Basic")
         for entry in v:
             print(
-                f"{entry['start']} - {entry['end']} for {entry['we']} WE: {entry['basic_volume']:15.2f} m3 {entry['basic_rate']:>15} EUR/m3 {entry['basic_cost']:15.2f} EUR"
+                f"{entry['start']} - {entry['end']} {entry['we']} WE and {entry['dom']} DOM: {entry['basic_volume']:6.2f} m3 {entry['basic_rate']:>15} EUR/m3 {entry['basic_cost']:15.2f} EUR"
             )
         print("\n*** Comfort")
         for entry in v:
             print(
-                f"{entry['start']} - {entry['end']} for {entry['we']} WE: {entry['comfort_volume']:15.2f} m3 {entry['comfort_rate']:>15} EUR/m3 {entry['comfort_cost']:15.2f} EUR"
+                f"{entry['start']} - {entry['end']} {entry['comfort_volume']:22.2f} m3 {entry['comfort_rate']:>15} EUR/m3 {entry['comfort_cost']:15.2f} EUR"
             )
+    print(f"\n{''.join(['=' for _ in range(30)])} Total {''.join(['=' for _ in range(30)])}")
+    total_cost = 0.0
+    for k, v in report.items():
+        total_cost += (
+            sum(e["fee"] for e in v)
+            - sum(e["discount"] for e in v)
+            + sum(e["basic_cost"] for e in v)
+            + sum(e["comfort_cost"] for e in v)
+        )
+    print(f"TOTAL (EUR exc VAT) = {total_cost:.2f}")
+    print(f"TOTAL (EUR inc VAT) = {total_cost*1.06:.2f}")
+    print(''.join(['=' for _ in range(67)]))
+

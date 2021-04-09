@@ -1,6 +1,6 @@
 from datetime import date
 
-from compute import compute_total_cost
+from compute import compute_total_cost, generate_report, print_report
 
 
 # m3 for the period above
@@ -27,12 +27,20 @@ from compute import compute_total_cost
 #     )
 # )
 
-print(
-    compute_total_cost(
-        reading=292,
-        data=[
-            {"start": date(2020, 2, 19), "end": date(2020, 12, 31), "we": 3, "dom": 5},
-            {"start": date(2021, 1, 1), "end": date(2021, 2, 4), "we": 3, "dom": 6},
-        ],
-    )
+rp1 = generate_report(
+    reading=449,
+    data=[
+        {"start": date(2019, 2, 14), "end": date(2019, 12, 31), "we": 3, "dom": 3},
+        {"start": date(2020, 1, 1), "end": date(2020, 2, 18), "we": 3, "dom": 5},
+    ],
 )
+rp1 = generate_report(
+    reading=292,
+    data=[
+        {"start": date(2020, 2, 19), "end": date(2020, 12, 31), "we": 3, "dom": 5},
+        {"start": date(2021, 1, 1), "end": date(2021, 2, 4), "we": 3, "dom": 6},
+    ],
+)
+
+print_report(rp1)
+# print_report(rp2)
