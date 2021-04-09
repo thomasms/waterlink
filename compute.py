@@ -1,4 +1,5 @@
 from datetime import date
+from collections import defaultdict
 
 """
 You are charged at two rates: basic and comfort.
@@ -86,7 +87,7 @@ def compute_days_between_dates(startdate, enddate, includeenddate=True):
     return days
 
 
-def prorate_scale(startdate=None, enddate=None, naive=False):
+def prorate_scale(startdate=None, enddate=None, naive=False, includeenddate=True):
     # we have a problem...
     if startdate is None and enddate is None:
         raise RuntimeError("You have a problem.")
@@ -104,10 +105,12 @@ def prorate_scale(startdate=None, enddate=None, naive=False):
     denom = (
         365
         if naive
-        else compute_days_between_dates(date(sd.year, 1, 1), date(sd.year, 12, 31))
+        else compute_days_between_dates(
+            date(sd.year, 1, 1), date(sd.year, 12, 31), includeenddate=includeenddate
+        )
     )
 
-    scale = compute_days_between_dates(sd, ed) / denom
+    scale = compute_days_between_dates(sd, ed, includeenddate=includeenddate) / denom
     return scale
 
 
@@ -118,6 +121,7 @@ def compute_basic_threshold(
     dom=3,
     basic_limit_household=30,
     basic_limit_person=30,
+    includeenddate=True,
 ):
     """
     This must be done per year.
@@ -134,7 +138,9 @@ def compute_basic_threshold(
     """
 
     full_year_threshold = basic_limit_household * we + basic_limit_person * dom
-    return full_year_threshold * prorate_scale(startdate=startdate, enddate=enddate)
+    return full_year_threshold * prorate_scale(
+        startdate=startdate, enddate=enddate, includeenddate=includeenddate
+    )
 
 
 def compute_fees(
@@ -145,15 +151,92 @@ def compute_fees(
     dom=3,
     fee_col="fee1_eur_per_year",
     discount_col="discount1_eur_per_year",
+    includeenddate=True,
 ):
     """
     You get a discount of discount1_eur_per_year per dom
     """
     year = enddate.year if startdate is None else startdate.year
-    scale = prorate_scale(startdate=startdate, enddate=enddate)
+    scale = prorate_scale(
+        startdate=startdate, enddate=enddate, includeenddate=includeenddate
+    )
     fee = rates[year][fee_col] * scale * we
     discount = min(rates[year][discount_col] * scale * dom, fee)
     return fee, discount
+
+
+def _compute(reading, data, rates=RATES, vat=0.06):
+    report_data = defaultdict(list)
+
+    # there are 3 types of fees - need to refactor this code!
+    fees_index = [1, 2, 3]
+    # need to know the days for all entries to weight comfort rates
+    # we always include the end date in this part of the calculation
+    days = [
+        compute_days_between_dates(entry["start"], entry["end"], includeenddate=True)
+        for entry in data
+    ]
+    for j, entry in enumerate(data):
+        includeenddate = False if j == 0 and len(data) > 1 else True
+
+        yearrates = rates[entry["start"].year]
+        scale = prorate_scale(
+            startdate=entry["start"],
+            enddate=entry["end"],
+            includeenddate=includeenddate,
+        )
+        threshold = compute_basic_threshold(
+            startdate=entry["start"],
+            enddate=entry["end"],
+            we=entry["we"],
+            dom=entry["dom"],
+            includeenddate=includeenddate,
+        )
+
+        scaled_reading = reading * scale
+        basicreading = scaled_reading if scaled_reading < threshold else threshold
+
+        dayscale = days[j] / sum(days)
+        scaled_reading = reading * dayscale
+        comfort_amount = max(scaled_reading - threshold, 0)
+
+        for i in fees_index:
+            f, d = compute_fees(
+                rates,
+                startdate=entry["start"],
+                enddate=entry["end"],
+                we=entry["we"],
+                dom=entry["dom"],
+                fee_col=f"fee{i}_eur_per_year",
+                discount_col=f"discount{i}_eur_per_year",
+                includeenddate=includeenddate,
+            )
+            br = yearrates[f"rate{i}_basic_eur_per_m3"]
+            cr = yearrates[f"rate{i}_comfort_eur_per_m3"]
+
+            year = entry["end"].year if entry["start"] is None else entry["start"].year
+            report_data[i].append(
+                {
+                    **entry,
+                    **{
+                        "days": compute_days_between_dates(
+                            entry["start"], entry["end"]
+                        ),
+                        "fee": f,
+                        "fee_rate": rates[year][f"fee{i}_eur_per_year"],
+                        "discount": d,
+                        "discount_rate": rates[year][f"discount{i}_eur_per_year"],
+                        "basic_rate": br,
+                        "basic_volume": basicreading,
+                        "basic_cost": basicreading * br,
+                        "comfort_rate": cr,
+                        "comfort_volume": comfort_amount,
+                        "comfort_cost": comfort_amount * cr,
+                    },
+                }
+            )
+
+    return report_data
 
 
 def compute_total_cost(reading, data, rates=RATES, vat=0.06):
@@ -186,49 +269,42 @@ def compute_total_cost(reading, data, rates=RATES, vat=0.06):
     -------
     single value representing total cost in EUR
     """
-    total_cost = 0
-    fees_index = range(1, 4)
-    for entry in data:
-        yearrates = rates[entry["start"].year]
-        scale = prorate_scale(startdate=entry["start"], enddate=entry["end"])
-        threshold = compute_basic_threshold(
-            startdate=entry["start"],
-            enddate=entry["end"],
-            we=entry["we"],
-            dom=entry["dom"],
+    rdata = generate_report(reading, data, rates=rates, vat=vat)
+    total_cost = 0.0
+    for k, v in rdata.items():
+        total_cost += (
+            sum(e["fee"] for e in v)
+            - sum(e["discount"] for e in v)
+            + sum(e["basic_cost"] for e in v)
+            + sum(e["comfort_cost"] for e in v)
         )
-
-        scaled_reading = reading * scale
-        comfort_amount = max(scaled_reading - threshold, 0)
-        basicreading = scaled_reading if scaled_reading < threshold else threshold
-
-        fees_with_discount = []
-        basic_costs = []
-        comfort_costs = []
-        for i in fees_index:
-            f, d = compute_fees(
-                rates,
-                startdate=entry["start"],
-                enddate=entry["end"],
-                we=entry["we"],
-                dom=entry["dom"],
-                fee_col=f"fee{i}_eur_per_year",
-                discount_col=f"discount{i}_eur_per_year",
-            )
-            fees_with_discount.append(f - d)
-            br = yearrates[f"rate{i}_basic_eur_per_m3"]
-            cr = yearrates[f"rate{i}_comfort_eur_per_m3"]
-            basic_costs.append(basicreading * br)
-            comfort_costs.append(comfort_amount * cr)
-            print("---------")
-            print(
-                f'{entry["start"]} - {entry["end"]} ({entry["we"]}/{entry["dom"]}) {i} @ {br}: {basicreading:.2f} = {basicreading * br:.2f} EUR, {f:.2f} fee, {d:.2f} discount'
-            )
-            print(
-                f'{entry["start"]} - {entry["end"]} ({entry["we"]}/{entry["dom"]}) {i} @ {cr}: {comfort_amount:.2f} = {comfort_amount * cr:.2f} EUR, {f:.2f} fee, {d:.2f} discount'
-            )
-
-        total = sum(basic_costs) + sum(comfort_costs) + sum(fees_with_discount)
-
-        total_cost += total
     return total_cost * (1 + vat)
+
+
+def generate_report(reading, data, rates=RATES, vat=0.06):
+    return _compute(reading, data, rates=rates, vat=vat)
+
+
+def print_report(report):
+    for k, v in report.items():
+        print(f"\n  {''.join(['=' for _ in range(40)])} {k} {''.join(['=' for _ in range(40)])}")
+        print("*** Fees")
+        for entry in v:
+            print(
+                f"{entry['start']} - {entry['end']} for {entry['we']} WE: {entry['days']:13} DAYS {entry['fee_rate']:13} EUR/YEAR {entry['fee']:15.2f} EUR"
+            )
+        print("\n*** Discounts")
+        for entry in v:
+            print(
+                f"{entry['start']} - {entry['end']} for {entry['we']} WE: {entry['days']:13} DAYS {-entry['discount_rate']:13} EUR/YEAR {-entry['discount']:15.2f} EUR"
+            )
+        print("\n*** Basic")
+        for entry in v:
+            print(
+                f"{entry['start']} - {entry['end']} for {entry['we']} WE: {entry['basic_volume']:15.2f} m3 {entry['basic_rate']:>15} EUR/m3 {entry['basic_cost']:15.2f} EUR"
+            )
+        print("\n*** Comfort")
+        for entry in v:
+            print(
+                f"{entry['start']} - {entry['end']} for {entry['we']} WE: {entry['comfort_volume']:15.2f} m3 {entry['comfort_rate']:>15} EUR/m3 {entry['comfort_cost']:15.2f} EUR"
+            )
