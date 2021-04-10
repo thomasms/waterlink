@@ -92,13 +92,8 @@ def prorate_scale(startdate=None, enddate=None, naive=True, includeenddate=True)
     if startdate is None and enddate is None:
         raise RuntimeError("You have a problem.")
 
-    sd = startdate
-    if sd is None:
-        sd = date(enddate.year, 1, 1)
-
-    ed = enddate
-    if ed is None:
-        ed = date(sd.year, 12, 31)
+    sd = date(enddate.year, 1, 1) if startdate is None else startdate
+    ed = date(sd.year, 12, 31) if enddate is None else enddate
 
     denom = (
         365
@@ -166,10 +161,37 @@ def _waterlinkcondition(isleapyear=True, isfirstentry=True, spansmultipleyears=T
 
 
 def _compute(reading, data, rates=RATES, vat=0.06):
+    """
+    algorithm outline:
+    - start date from last bill
+    - end date is last reading submitted for bill
+    - the reading is the difference from end date to start date
+    - work out the number of people per apartment per each year
+            + [(year, we, dom), (year, we, dom)] - should not exceed 2 years,
+            since each bill covers roughly 365 days just doesn't start on Jan 1 always.
+            But we will implement it to allow any number of years. However, still
+            we consider that WE of DOM changes only on Jan 1st.
+    - split the reading linearly across years
+            For example if it has 321 days in 2019 and 49 days in 2020, then we work
+            out thresholds based on 321/365 for WE1 and DOM1 and then 49/365 for WE2 and DOM2
+            for each year and split it
+
+    Parameters
+    ----------
+    # m3 for the period above
+    reading = 442.936
+
+    data = [
+        {"start": START_DATE, "end": date(START_DATE.year, 12, 31), "we": 3, "dom": 3},
+        {"start": date(END_DATE.year, 1, 1), "end": END_DATE, "we": 3, "dom": 5},
+    ]
+
+    Returns
+    -------
+    data structure containing report breakdown
+    """
     report_data = defaultdict(list)
 
-    # there are 3 types of fees - need to refactor this code!
-    fees_index = [1, 2, 3]
     # need to know the days for all entries to weight comfort rates
     # we always include the end date in this part of the calculation
     days = [
@@ -214,6 +236,8 @@ def _compute(reading, data, rates=RATES, vat=0.06):
         scaled_reading = reading * dayscale
         comfort_reading = max(scaled_reading - threshold, 0)
 
+        # there are 3 types of fees - need to refactor this code!
+        fees_index = [1, 2, 3]
         for i in fees_index:
             f, d = compute_fees(
                 rates,
@@ -254,35 +278,6 @@ def _compute(reading, data, rates=RATES, vat=0.06):
 
 
 def compute_total_cost(reading, data, rates=RATES, vat=0.06):
-    """
-    algorithm outline:
-    - start date from last bill
-    - end date is last reading submitted for bill
-    - the reading is the difference from end date to start date
-    - work out the number of people per apartment per each year
-            + [(year, we, dom), (year, we, dom)] - should not exceed 2 years,
-            since each bill covers roughly 365 days just doesn't start on Jan 1 always.
-            But we will implement it to allow any number of years. However, still
-            we consider that WE of DOM changes only on Jan 1st.
-    - split the reading linearly across years
-            For example if it has 321 days in 2019 and 49 days in 2020, then we work
-            out thresholds based on 321/365 for WE1 and DOM1 and then 49/365 for WE2 and DOM2
-            for each year and split it
-
-    Parameters
-    ----------
-    # m3 for the period above
-    reading = 442.936
-
-    data = [
-        {"start": START_DATE, "end": date(START_DATE.year, 12, 31), "we": 3, "dom": 3},
-        {"start": date(END_DATE.year, 1, 1), "end": END_DATE, "we": 3, "dom": 5},
-    ]
-
-    Returns
-    -------
-    single value representing total cost in EUR
-    """
     rdata = generate_report(reading, data, rates=rates, vat=vat)
     total_cost = 0.0
     for _, v in rdata.items():

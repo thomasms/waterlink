@@ -5,7 +5,7 @@ from compute import compute_total_cost
 
 
 class ComputeUnitTest(unittest.TestCase):
-    
+
     # Real case: 2019-2020 bill (exc VAT)
     def test_case1(self):
         result = compute_total_cost(
@@ -145,7 +145,12 @@ class ComputeUnitTest(unittest.TestCase):
         result = compute_total_cost(
             reading=292,
             data=[
-                {"start": date(2020, 2, 19), "end": date(2020, 12, 31), "we": 3, "dom": 5},
+                {
+                    "start": date(2020, 2, 19),
+                    "end": date(2020, 12, 31),
+                    "we": 3,
+                    "dom": 5,
+                },
                 {"start": date(2021, 1, 1), "end": date(2021, 2, 4), "we": 3, "dom": 6},
             ],
             vat=0.0,
@@ -158,7 +163,12 @@ class ComputeUnitTest(unittest.TestCase):
         result = compute_total_cost(
             reading=292,
             data=[
-                {"start": date(2020, 2, 19), "end": date(2020, 12, 31), "we": 3, "dom": 5},
+                {
+                    "start": date(2020, 2, 19),
+                    "end": date(2020, 12, 31),
+                    "we": 3,
+                    "dom": 5,
+                },
                 {"start": date(2021, 1, 1), "end": date(2021, 2, 4), "we": 3, "dom": 6},
             ],
             vat=0.06,
@@ -170,8 +180,18 @@ class ComputeUnitTest(unittest.TestCase):
         result = compute_total_cost(
             reading=365,
             data=[
-                {"start": date(2020, 2, 19), "end": date(2020, 12, 31), "we": 3, "dom": 6},
-                {"start": date(2021, 1, 1), "end": date(2021, 2, 18), "we": 3, "dom": 6},
+                {
+                    "start": date(2020, 2, 19),
+                    "end": date(2020, 12, 31),
+                    "we": 3,
+                    "dom": 6,
+                },
+                {
+                    "start": date(2021, 1, 1),
+                    "end": date(2021, 2, 18),
+                    "we": 3,
+                    "dom": 6,
+                },
             ],
             vat=0.0,
         )
@@ -182,8 +202,18 @@ class ComputeUnitTest(unittest.TestCase):
         result = compute_total_cost(
             reading=365,
             data=[
-                {"start": date(2020, 2, 19), "end": date(2020, 12, 31), "we": 3, "dom": 6},
-                {"start": date(2021, 1, 1), "end": date(2021, 2, 18), "we": 3, "dom": 6},
+                {
+                    "start": date(2020, 2, 19),
+                    "end": date(2020, 12, 31),
+                    "we": 3,
+                    "dom": 6,
+                },
+                {
+                    "start": date(2021, 1, 1),
+                    "end": date(2021, 2, 18),
+                    "we": 3,
+                    "dom": 6,
+                },
             ],
             vat=0.06,
         )
