@@ -1,4 +1,5 @@
 from datetime import date
+from calendar import isleap
 from collections import defaultdict
 
 """
@@ -87,17 +88,14 @@ def compute_days_between_dates(startdate, enddate, includeenddate=True):
     return days
 
 
-def prorate_scale(startdate=None, enddate=None, naive=False, includeenddate=True):
-    # we have a problem...
+def prorate_scale(startdate=None, enddate=None, naive=True, includeenddate=True):
     if startdate is None and enddate is None:
         raise RuntimeError("You have a problem.")
 
-    # assume first day of year if no startdate specified
     sd = startdate
     if sd is None:
         sd = date(enddate.year, 1, 1)
 
-    # assume last day of year if no enddate specified
     ed = enddate
     if ed is None:
         ed = date(sd.year, 12, 31)
@@ -105,9 +103,7 @@ def prorate_scale(startdate=None, enddate=None, naive=False, includeenddate=True
     denom = (
         365
         if naive
-        else compute_days_between_dates(
-            date(sd.year, 1, 1), date(sd.year, 12, 31), includeenddate=includeenddate
-        )
+        else compute_days_between_dates(date(sd.year, 1, 1), date(sd.year, 12, 31))
     )
 
     scale = compute_days_between_dates(sd, ed, includeenddate=includeenddate) / denom
@@ -165,6 +161,10 @@ def compute_fees(
     return fee, discount
 
 
+def _waterlinkcondition(isleapyear=True, isfirstentry=True, spansmultipleyears=True):
+    return False if isfirstentry and isleapyear and spansmultipleyears else True
+
+
 def _compute(reading, data, rates=RATES, vat=0.06):
     report_data = defaultdict(list)
 
@@ -173,11 +173,25 @@ def _compute(reading, data, rates=RATES, vat=0.06):
     # need to know the days for all entries to weight comfort rates
     # we always include the end date in this part of the calculation
     days = [
-        compute_days_between_dates(entry["start"], entry["end"], includeenddate=True)
-        for entry in data
+        compute_days_between_dates(
+            entry["start"],
+            entry["end"],
+            includeenddate=_waterlinkcondition(
+                isleapyear=isleap(entry["start"].year),
+                isfirstentry=(j == 0),
+                spansmultipleyears=len(data) > 1,
+            ),
+        )
+        for j, entry in enumerate(data)
     ]
     for j, entry in enumerate(data):
-        includeenddate = (False if j == 0 and len(data) > 1 else True)
+        # HACK: Not sure why this is the case but this is needed to get fees and rates exactly right
+        # for both 2019 & 2020 bills
+        includeenddate = _waterlinkcondition(
+            isleapyear=isleap(entry["start"].year),
+            isfirstentry=(j == 0),
+            spansmultipleyears=len(data) > 1,
+        )
 
         yearrates = rates[entry["start"].year]
         scale = prorate_scale(
@@ -194,11 +208,11 @@ def _compute(reading, data, rates=RATES, vat=0.06):
         )
 
         scaled_reading = reading * scale
-        basicreading = scaled_reading if scaled_reading < threshold else threshold
+        basic_reading = scaled_reading if scaled_reading < threshold else threshold
 
         dayscale = days[j] / sum(days)
         scaled_reading = reading * dayscale
-        comfort_amount = max(scaled_reading - threshold, 0)
+        comfort_reading = max(scaled_reading - threshold, 0)
 
         for i in fees_index:
             f, d = compute_fees(
@@ -227,11 +241,11 @@ def _compute(reading, data, rates=RATES, vat=0.06):
                         "discount": d,
                         "discount_rate": rates[year][f"discount{i}_eur_per_year"],
                         "basic_rate": br,
-                        "basic_volume": basicreading,
-                        "basic_cost": basicreading * br,
+                        "basic_volume": basic_reading,
+                        "basic_cost": basic_reading * br,
                         "comfort_rate": cr,
-                        "comfort_volume": comfort_amount,
-                        "comfort_cost": comfort_amount * cr,
+                        "comfort_volume": comfort_reading,
+                        "comfort_cost": comfort_reading * cr,
                     },
                 }
             )
@@ -271,7 +285,7 @@ def compute_total_cost(reading, data, rates=RATES, vat=0.06):
     """
     rdata = generate_report(reading, data, rates=rates, vat=vat)
     total_cost = 0.0
-    for k, v in rdata.items():
+    for _, v in rdata.items():
         total_cost += (
             sum(e["fee"] for e in v)
             - sum(e["discount"] for e in v)
@@ -287,7 +301,9 @@ def generate_report(reading, data, rates=RATES, vat=0.06):
 
 def print_report(report):
     for k, v in report.items():
-        print(f"\n  {''.join(['=' for _ in range(40)])} {k} {''.join(['=' for _ in range(40)])}")
+        print(
+            f"\n  {''.join(['=' for _ in range(40)])} {k} {''.join(['=' for _ in range(40)])}"
+        )
         print("*** Fees")
         for entry in v:
             print(
@@ -308,7 +324,9 @@ def print_report(report):
             print(
                 f"{entry['start']} - {entry['end']} {entry['comfort_volume']:22.2f} m3 {entry['comfort_rate']:>15} EUR/m3 {entry['comfort_cost']:15.2f} EUR"
             )
-    print(f"\n{''.join(['=' for _ in range(30)])} Total {''.join(['=' for _ in range(30)])}")
+    print(
+        f"\n{''.join(['=' for _ in range(30)])} Total {''.join(['=' for _ in range(30)])}"
+    )
     total_cost = 0.0
     for k, v in report.items():
         total_cost += (
@@ -319,5 +337,4 @@ def print_report(report):
         )
     print(f"TOTAL (EUR exc VAT) = {total_cost:.2f}")
     print(f"TOTAL (EUR inc VAT) = {total_cost*1.06:.2f}")
-    print(''.join(['=' for _ in range(67)]))
-
+    print("".join(["=" for _ in range(67)]))
