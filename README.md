@@ -23,3 +23,16 @@ For example:
 - if you are a family of four and share a water meter with another household with another couple: we=2, dom=6
 
 It is important also to realise that they only count someone if they are registered in the household on the 1st January. If someone moves in on the 2nd January (officially) then they will not count until the next 1st January. Similarly if someone leaves on the 2nd January (officially) they will still be counted until 31st December. This is very important because this changes your comfort threshold - normally 30m3 per person.
+
+## Examples
+### One water meter per household comparing 1 to 5 people in the same household
+
+![we1](https://github.com/thomasms/waterlink/blob/master/figures/we1_dom_compare.png)
+
+![we1_pp](https://github.com/thomasms/waterlink/blob/master/figures/we1_dom_compare_pp.png)
+
+### One water meter for 3 households comparing 3 to 7 people between those households
+
+![we1](https://github.com/thomasms/waterlink/blob/master/figures/we3_dom_compare.png)
+
+![we1_pp](https://github.com/thomasms/waterlink/blob/master/figures/we3_dom_compare_pp.png)
