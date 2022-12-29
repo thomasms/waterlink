@@ -92,6 +92,20 @@ RATES = {
         "rate3_basic_eur_per_m3": 1.0594,
         "rate3_comfort_eur_per_m3": 2.1188,
     },
+    2023: {
+        "discount1_eur_per_year": 10,
+        "discount2_eur_per_year": 6,
+        "discount3_eur_per_year": 4,
+        "fee1_eur_per_year": 50,
+        "fee2_eur_per_year": 30,
+        "fee3_eur_per_year": 20,
+        "rate1_basic_eur_per_m3": 1.6289,
+        "rate1_comfort_eur_per_m3": 3.2578,
+        "rate2_basic_eur_per_m3": 1.2460,
+        "rate2_comfort_eur_per_m3": 2.4920,
+        "rate3_basic_eur_per_m3": 1.1719,
+        "rate3_comfort_eur_per_m3": 2.3438,
+    },
 }
 
 
